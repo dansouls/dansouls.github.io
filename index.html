@@ -142,6 +142,31 @@
   // Initialize Firebase
   const app = initializeApp(firebaseConfig);
   const analytics = getAnalytics(app);
+
+  const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const chatRef = ref(db, "messages");
+
+    const msgInput = document.getElementById("msgInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const messages = document.getElementById("messages");
+
+    sendBtn.onclick = () => {
+      const text = msgInput.value.trim();
+      if (text) {
+        push(chatRef, { text, time: Date.now() });
+        msgInput.value = "";
+      }
+    };
+
+    onChildAdded(chatRef, (data) => {
+      const msg = document.createElement("div");
+      msg.className = "msg";
+      msg.textContent = data.val().text;
+      messages.appendChild(msg);
+      message
+
+    
 </script>
 
   <footer>
