@@ -4,9 +4,57 @@
   <meta charset="UTF-8" />
   <title>Game Hot</title>
   <style>
-    body { font-family: sans-serif; background: #f4f4f4; padding: 20px; }
-    li { cursor: pointer; margin: 10px 0; color: blue; }
-    #info { margin-top: 20px; background: white; padding: 15px; border-radius: 8px; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #fff;
+      padding: 20px;
+    }
+
+    h1 {
+      color: #00ffd5;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      cursor: pointer;
+      margin: 10px 0;
+      color: #00ccff;
+      padding: 8px;
+      transition: 0.3s;
+    }
+
+    li:hover {
+      background: #222;
+      border-radius: 5px;
+    }
+
+    #info {
+      margin-top: 20px;
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #00ccff44;
+    }
+
+    #info img {
+      max-width: 100%;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+
+    #info h2 {
+      margin-top: 0;
+      color: #00ffd5;
+    }
+
+    #info p {
+      line-height: 1.6;
+    }
   </style>
 </head>
 <body>
@@ -18,7 +66,6 @@
     const gameList = document.getElementById("gameList");
     const info = document.getElementById("info");
 
-    // Đọc JSON từ file games.json
     fetch('games.json')
       .then(response => response.json())
       .then(games => {
@@ -26,7 +73,11 @@
           const li = document.createElement("li");
           li.textContent = game.name;
           li.onclick = () => {
-            info.innerHTML = `<h2>${game.name}</h2><p>${game.desc}</p>`;
+            info.innerHTML = `
+              <img src="${game.image}" alt="${game.name}" />
+              <h2>${game.name}</h2>
+              <p>${game.desc}</p>
+            `;
           };
           gameList.appendChild(li);
         });
