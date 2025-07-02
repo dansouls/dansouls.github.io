@@ -108,6 +108,41 @@
     <!-- Add more game cards as needed -->
 
   </div>
+   <h1>🎮 Danh sách Game Hot</h1>
+  <ul id="gameList"></ul>
+
+  <div id="info"><em>Click vào tên game để xem chi tiết...</em></div>
+
+  <script>
+    // JSON nội dung các game
+    const games = [
+      {
+        name: "Elden Ring",
+        desc: "Một game hành động nhập vai thế giới mở của FromSoftware. Thử thách, đẹp và rất ám ảnh."
+      },
+      {
+        name: "Hades II",
+        desc: "Game roguelike chặt chém hấp dẫn với phong cách thần thoại Hy Lạp và đồ họa độc đáo."
+      },
+      {
+        name: "Stellar Blade",
+        desc: "Game hành động giả tưởng với nhân vật nữ chính mạnh mẽ và đồ họa AAA."
+      }
+    ];
+
+    // Hiển thị danh sách game
+    const gameList = document.getElementById("gameList");
+    const info = document.getElementById("info");
+
+    games.forEach((game, index) => {
+      const li = document.createElement("li");
+      li.textContent = `• ${game.name}`;
+      li.onclick = () => {
+        info.innerHTML = `<h2>${game.name}</h2><p>${game.desc}</p>`;
+      };
+      gameList.appendChild(li);
+    });
+  </script>
 
   <div class="footer">
     © 2025 Dân Souls Studio | <a href="https://www.youtube.com/@dansouls" target="_blank">Kênh YouTube</a>
