@@ -2,16 +2,13 @@
   {
     "name": "Elden Ring",
     "desc": "Game hành động nhập vai siêu khó từ FromSoftware.",
-    "image": "https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/header.jpg"
+    "image": "https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/header.jpg",
+    "link": "https://store.steampowered.com/app/1245620"
   },
   {
     "name": "Hades II",
     "desc": "Roguelike hấp dẫn với thần thoại Hy Lạp.",
-    "image": "https://cdn.cloudflare.steamstatic.com/steam/apps/1145350/header.jpg"
-  },
-  {
-    "name": "Stellar Blade",
-    "desc": "Game hành động đồ họa đỉnh cao với nhân vật nữ chính.",
-    "image": "https://cdn.cloudflare.steamstatic.com/steam/apps/2822290/header.jpg"
+    "image": "https://cdn.cloudflare.steamstatic.com/steam/apps/1145350/header.jpg",
+    "link": "https://store.steampowered.com/app/1145350"
   }
 ]
