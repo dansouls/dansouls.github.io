@@ -13,53 +13,76 @@
 
     h1 {
       color: #00ffd5;
+      text-align: center;
     }
 
     ul {
       list-style: none;
       padding: 0;
+      max-width: 600px;
+      margin: 20px auto;
     }
 
     li {
       cursor: pointer;
       margin: 10px 0;
       color: #00ccff;
-      padding: 8px;
+      padding: 10px;
+      border-radius: 5px;
+      background: #1e1e1e;
       transition: 0.3s;
     }
 
     li:hover {
-      background: #222;
-      border-radius: 5px;
+      background: #2a2a2a;
     }
 
     #info {
-      margin-top: 20px;
-      background: #1e1e1e;
+      margin: 30px auto;
       padding: 20px;
+      background: #1c1c1c;
       border-radius: 10px;
-      box-shadow: 0 0 10px #00ccff44;
+      box-shadow: 0 0 12px #00ccff55;
+      max-width: 600px;
+      text-align: center;
     }
 
     #info img {
       max-width: 100%;
       border-radius: 8px;
-      margin-bottom: 10px;
+      margin-bottom: 15px;
     }
 
     #info h2 {
-      margin-top: 0;
       color: #00ffd5;
     }
 
     #info p {
       line-height: 1.6;
     }
+
+    .link-btn {
+      display: inline-block;
+      margin-top: 15px;
+      font-size: 1em;
+      text-decoration: none;
+      color: #00ffaa;
+      font-weight: bold;
+      transition: 0.2s;
+    }
+
+    .link-btn:hover {
+      text-decoration: underline;
+      color: #00ffcc;
+    }
   </style>
 </head>
 <body>
-  <h1>Danh sách Game Hot 🔥</h1>
+
+  <h1>🔥 Danh Sách Game Hot</h1>
+
   <ul id="gameList"></ul>
+
   <div id="info"><em>Nhấn vào tên game để xem chi tiết...</em></div>
 
   <script>
@@ -77,6 +100,7 @@
               <img src="${game.image}" alt="${game.name}" />
               <h2>${game.name}</h2>
               <p>${game.desc}</p>
+              <a class="link-btn" href="${game.link}" target="_blank">👉 Xem thêm</a>
             `;
           };
           gameList.appendChild(li);
@@ -84,7 +108,7 @@
       })
       .catch(error => {
         info.innerHTML = `<p style="color:red;">Lỗi tải dữ liệu game!</p>`;
-        console.error("Lỗi tải JSON:", error);
+        console.error("Lỗi:", error);
       });
   </script>
 </body>
