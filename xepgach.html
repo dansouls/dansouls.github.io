@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Game Xếp Hình — JavaScript</title>
+  <style>
+    :root{
+      --bg:#0b1020; --panel:#11182e; --accent:#6dd3ff; --text:#e7f0ff; --muted:#8aa0c7;
+      --good:#5cf29d; --warn:#ffcc66; --bad:#ff6b6b;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;
+      background: radial-gradient(1000px 600px at 20% -10%, #1b2447 0%, #0b1020 60%) fixed var(--bg);
+      color:var(--text); display:flex; min-height:100svh; align-items:center; justify-content:center;
+    }
+    .wrap{display:grid; gap:16px; grid-template-columns: 1fr auto auto; padding:20px; width:min(1100px,95vw)}
+    .board{
+      background:linear-gradient(180deg,#0d1430,#0a0f24); border:1px solid #223;
+      border-radius:20px; padding:16px; position:relative; box-shadow:0 10px 30px rgba(0,0,0,.4);
+    }
+    canvas{display:block; background: repeating-linear-gradient(180deg, rgba(255,255,255,.03) 0 2px, transparent 2px 24px);
+      border-radius:12px; border:1px solid #2a375d}
+
+    .side{display:grid; gap:16px}
+    .card{background:var(--panel); border:1px solid #243052; border-radius:16px; padding:12px; box-shadow:0 8px 24px rgba(0,0,0,.35)}
+    .card h3{margin:.2rem 0 .6rem; font-size:.95rem; color:var(--accent); letter-spacing:.3px}
+    .mini{width:140px; height:140px; border-radius:10px; background:#0b132a; border:1px solid #1f2b4e}
+
+    .hud{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px}
+    .stat{font-variant-numeric:tabular-nums}
+    .btns{display:grid; grid-template-columns:repeat(4,1fr); gap:8px}
+    button{
+      background:#14234a; color:var(--text); border:1px solid #273a6a; border-radius:12px; padding:10px 12px; 
+      font-weight:600; cursor:pointer; transition:.15s transform,.2s background; user-select:none
+    }
+    button:hover{background:#183060}
+    button:active{transform:translateY(1px)}
+    .wide{grid-column:span 2}
+
+    .footer{grid-column:1/-1; text-align:center; color:var(--muted); font-size:.9rem}
+    .key{display:inline-block; border:1px solid #40507d; border-radius:8px; padding:2px 6px; font-weight:700; margin:0 2px; background:#0e1836}
+
+    @media (max-width: 980px){
+      .wrap{grid-template-columns:1fr; justify-items:center}
+      .side{grid-template-columns:repeat(2,auto)}
+      .btns{grid-template-columns:repeat(4,1fr)}
+      .mini{width:120px;height:120px}
+    }
+    @media (max-width: 520px){
+      .side{grid-template-columns:1fr 1fr}
+      .mini{width:96px;height:96px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="board">
+      <div class="hud">
+        <div>
+          <div><strong>Điểm:</strong> <span id="score" class="stat">0</span></div>
+          <div><strong>Hàng:</strong> <span id="lines" class="stat">0</span></div>
+          <div><strong>Level:</strong> <span id="level" class="stat">1</span></div>
+        </div>
+        <div>
+          <button id="pauseBtn">Tạm dừng</button>
+          <button id="restartBtn">Chơi lại</button>
+        </div>
+      </div>
+      <canvas id="game" width="300" height="600" aria-label="Bảng xếp hình" role="img"></canvas>
+    </div>
+
+    <div class="side">
+      <div class="card">
+        <h3>Next</h3>
+        <canvas id="next" class="mini" width="140" height="140"></canvas>
+      </div>
+      <div class="card">
+        <h3>Giữ (Hold)
+          <span style="color:var(--muted); font-weight:400">— phím <span class="key">C</span></span>
+        </h3>
+        <canvas id="hold" class="mini" width="140" height="140"></canvas>
+      </div>
+      <div class="card">
+        <h3>Điều khiển</h3>
+        <div style="line-height:1.6">
+          <div><span class="key">←</span>/<span class="key">→</span> Di chuyển</div>
+          <div><span class="key">↓</span> Rơi nhanh • <span class="key">Space</span> Rơi xuống</div>
+          <div><span class="key">Z</span>/<span class="key">X</span> Xoay • <span class="key">C</span> Giữ</div>
+          <div><span class="key">P</span> Tạm dừng</div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Nút chạm (mobile)</h3>
+        <div class="btns">
+          <button id="btnLeft">←</button>
+          <button id="btnRight">→</button>
+          <button id="btnRotateL">Z</button>
+          <button id="btnRotateR">X</button>
+          <button id="btnSoft" class="wide">↓</button>
+          <button id="btnHard" class="wide">Rơi xuống</button>
+          <button id="btnHold" class="wide">Giữ (C)</button>
+          <button id="btnPause" class="wide">Tạm dừng</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">Made with ❤ — open-source. Bạn có thể copy toàn bộ file HTML này để chạy ngay.</div>
+  </div>
+
+  <script>
+    // ====== Cấu hình cơ bản ======
+    const COLS = 10, ROWS = 20, SIZE = 30; // canvas 300x600
+    const TICK_MIN = 70; // nhanh nhất
+
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    const nextCanvas = document.getElementById('next');
+    const nextCtx = nextCanvas.getContext('2d');
+    const holdCanvas = document.getElementById('hold');
+    const holdCtx = holdCanvas.getContext('2d');
+
+    const scoreEl = document.getElementById('score');
+    const linesEl = document.getElementById('lines');
+    const levelEl = document.getElementById('level');
+
+    const SCORES = {1:100, 2:300, 3:500, 4:800};
+
+    // Màu các khối
+    const COLORS = {
+      I:'#6dd3ff', J:'#5da2ff', L:'#ffc65c', O:'#ffe66d', S:'#5cf29d', T:'#cfa9ff', Z:'#ff6b6b', GHOST:'rgba(255,255,255,.18)'
+    };
+
+    // Ma trận các mảnh 4x4
+    const SHAPES = {
+      I:[[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+      J:[[1,0,0],[1,1,1],[0,0,0]],
+      L:[[0,0,1],[1,1,1],[0,0,0]],
+      O:[[1,1],[1,1]],
+      S:[[0,1,1],[1,1,0],[0,0,0]],
+      T:[[0,1,0],[1,1,1],[0,0,0]],
+      Z:[[1,1,0],[0,1,1],[0,0,0]]
+    };
+
+    const PIECES = Object.keys(SHAPES);
+
+    function rotate(matrix, dir){
+      // quay 90 độ, dir=1 (cw), -1 (ccw)
+      const N = matrix.length;
+      const res = Array.from({length:N},()=>Array(N).fill(0));
+      for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+        const val = matrix[y][x];
+        if(!val) continue;
+        if(dir>0) res[x][N-1-y] = val; else res[N-1-x][y] = val;
+      }
+      return trimMatrix(res);
+    }
+
+    function trimMatrix(m){
+      // loại bỏ các hàng/cột rỗng để gọn
+      let top=0,bottom=m.length-1,left=0,right=m[0].length-1;
+      while(top<=bottom && m[top].every(v=>!v)) top++;
+      while(bottom>=top && m[bottom].every(v=>!v)) bottom--;
+      while(left<=right && m.every(row=>!row[left])) left++;
+      while(right>=left && m.every(row=>!row[right])) right--;
+      const res=[];
+      for(let y=top;y<=bottom;y++) res.push(m[y].slice(left,right+1));
+      return res.length?res:[[0]];
+    }
+
+    function createMatrix(w,h){
+      return Array.from({length:h},()=>Array(w).fill(null));
+    }
+
+    // 7-bag randomizer
+    let bag = [];
+    function nextType(){
+      if(bag.length===0){
+        bag = [...PIECES];
+        for(let i=bag.length-1;i>0;i--){
+          const j=Math.floor(Math.random()*(i+1));
+          [bag[i],bag[j]]=[bag[j],bag[i]];
+        }
+      }
+      return bag.pop();
+    }
+
+    class Piece{
+      constructor(type){
+        this.type = type;
+        this.matrix = SHAPES[type].map(r=>r.slice());
+        this.matrix = trimMatrix(this.matrix);
+        this.x = Math.floor((COLS - this.matrix[0].length)/2);
+        this.y = -2; // spawn hơi trên
+        this.usedHold = false;
+      }
+      rotate(dir){
+        const rotated = rotate(this.matrix, dir);
+        const kickTests = [0, -1, 1, -2, 2];
+        for(const dx of kickTests){
+          if(!collides(rotated, this.x+dx, this.y)){
+            this.matrix = rotated; this.x += dx; return true;
+          }
+        }
+        return false;
+      }
+    }
+
+    // Trạng thái game
+    const state = {
+      grid: createMatrix(COLS, ROWS),
+      cur: null,
+      nextQueue: [],
+      hold:null,
+      canHold:true,
+      score:0, lines:0, level:1,
+      dropCounter:0, dropInterval:1000,
+      lastTime:0,
+      paused:false,
+      gameOver:false
+    };
+
+    function reset(){
+      state.grid = createMatrix(COLS, ROWS);
+      state.cur = new Piece(nextType());
+      state.nextQueue = [nextType(), nextType(), nextType()];
+      state.hold = null; state.canHold = true;
+      state.score=0; state.lines=0; state.level=1; state.dropInterval=1000; state.dropCounter=0;
+      state.paused=false; state.gameOver=false; updateHUD();
+      drawAll();
+    }
+
+    function levelSpeed(level){
+      return Math.max(1000 - (level-1)*80, TICK_MIN);
+    }
+
+    function updateLevel(linesCleared){
+      state.lines += linesCleared;
+      const newLevel = Math.floor(state.lines/10)+1;
+      if(newLevel!==state.level){
+        state.level = newLevel;
+        state.dropInterval = levelSpeed(state.level);
+      }
+    }
+
+    function collides(matrix, offsetX, offsetY){
+      for(let y=0;y<matrix.length;y++){
+        for(let x=0;x<matrix[y].length;x++){
+          if(!matrix[y][x]) continue;
+          const nx = offsetX + x;
+          const ny = offsetY + y;
+          if(ny < 0) continue; // cho phép trên đỉnh
+          if(nx<0 || nx>=COLS || ny>=ROWS) return true;
+          if(state.grid[ny][nx]) return true;
+        }
+      }
+      return false;
+    }
+
+    function merge(){
+      const {matrix,x,y,type} = state.cur;
+      for(let j=0;j<matrix.length;j++){
+        for(let i=0;i<matrix[j].length;i++){
+          if(matrix[j][i]){
+            const ny = y + j; const nx = x + i;
+            if(ny>=0) state.grid[ny][nx] = type;
+          }
+        }
+      }
+    }
+
+    function clearLines(){
+      let cleared = 0;
+      outer: for(let y=ROWS-1;y>=0;y--){
+        if(state.grid[y].every(cell=>cell)){
+          const row = state.grid.splice(y,1)[0];
+          state.grid.unshift(Array(COLS).fill(null));
+          cleared++; y++; // kiểm tra lại dòng vừa kéo xuống
+        }
+      }
+      if(cleared){
+        state.score += (SCORES[cleared]||0) * state.level;
+        updateLevel(cleared); updateHUD();
+      }
+    }
+
+    function spawnNext(){
+      state.cur = new Piece(state.nextQueue.shift());
+      state.nextQueue.push(nextType());
+      state.canHold = true; state.cur.usedHold = false;
+      if(collides(state.cur.matrix, state.cur.x, state.cur.y)){
+        state.gameOver = true; state.paused = true;
+      }
+    }
+
+    function hardDrop(){
+      while(!collides(state.cur.matrix, state.cur.x, state.cur.y+1)){
+        state.cur.y++; state.score += 2; // thưởng nhẹ hard drop
+      }
+      lockPiece();
+    }
+
+    function softDrop(){
+      if(!collides(state.cur.matrix, state.cur.x, state.cur.y+1)){
+        state.cur.y++; state.score += 1; updateHUD();
+      } else {
+        lockPiece();
+      }
+    }
+
+    function move(dx){
+      const nx = state.cur.x + dx;
+      if(!collides(state.cur.matrix, nx, state.cur.y)) state.cur.x = nx;
+    }
+
+    function rotateCur(dir){
+      state.cur.rotate(dir);
+    }
+
+    function hold(){
+      if(!state.canHold) return;
+      if(state.hold == null){
+        state.hold = state.cur.type; spawnNext();
+      } else {
+        const tmp = state.hold; state.hold = state.cur.type; state.cur = new Piece(tmp);
+      }
+      state.canHold = false;
+    }
+
+    function lockPiece(){
+      merge();
+      clearLines();
+      spawnNext();
+      updateHUD();
+    }
+
+    function drawCell(x,y,color,ghost=false){
+      const px = x*SIZE, py = y*SIZE;
+      ctx.fillStyle = ghost? COLORS.GHOST : color;
+      ctx.fillRect(px,py,SIZE,SIZE);
+      if(!ghost){
+        ctx.fillStyle = 'rgba(0,0,0,.15)';
+        ctx.fillRect(px,py+SIZE-4,SIZE,4);
+        ctx.fillStyle = 'rgba(255,255,255,.08)';
+        ctx.fillRect(px,py, SIZE, 3);
+      }
+      ctx.strokeStyle = 'rgba(255,255,255,.06)';
+      ctx.strokeRect(px+.5,py+.5,SIZE-1,SIZE-1);
+    }
+
+    function getGhostY(){
+      let gy = state.cur.y;
+      while(!collides(state.cur.matrix, state.cur.x, gy+1)) gy++;
+      return gy;
+    }
+
+    function drawBoard(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      // ô nền mờ
+      for(let y=0;y<ROWS;y++){
+        for(let x=0;x<COLS;x++){
+          if(state.grid[y][x]) drawCell(x,y,COLORS[state.grid[y][x]]);
+        }
+      }
+      if(state.cur){
+        const gy = getGhostY();
+        // ghost
+        for(let j=0;j<state.cur.matrix.length;j++){
+          for(let i=0;i<state.cur.matrix[j].length;i++){
+            if(state.cur.matrix[j][i]){
+              const gx = state.cur.x + i; const gy2 = gy + j;
+              if(gy2>=0) drawCell(gx, gy2, COLORS.GHOST, true);
+            }
+          }
+        }
+        // current
+        for(let j=0;j<state.cur.matrix.length;j++){
+          for(let i=0;i<state.cur.matrix[j].length;i++){
+            if(state.cur.matrix[j][i]){
+              const nx = state.cur.x + i; const ny = state.cur.y + j;
+              if(ny>=0) drawCell(nx, ny, COLORS[state.cur.type]);
+            }
+          }
+        }
+      }
+
+      if(state.gameOver){
+        drawOverlay('GAME OVER\nNhấn Chơi lại');
+      } else if(state.paused){
+        drawOverlay('TẠM DỪNG');
+      }
+    }
+
+    function drawOverlay(text){
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,.45)';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center'; ctx.textBaseline='middle';
+      ctx.font = '700 26px system-ui,Segoe UI,Roboto';
+      ctx.fillText(text, canvas.width/2, canvas.height/2);
+      ctx.restore();
+    }
+
+    function drawMini(ctx2, type){
+      ctx2.clearRect(0,0,ctx2.canvas.width, ctx2.canvas.height);
+      if(!type) return;
+      const matrix = trimMatrix(SHAPES[type]);
+      const cell = 24; // kích thước ô nhỏ
+      const w = matrix[0].length * cell, h = matrix.length * cell;
+      const ox = Math.floor((ctx2.canvas.width - w)/2);
+      const oy = Math.floor((ctx2.canvas.height - h)/2);
+      for(let y=0;y<matrix.length;y++){
+        for(let x=0;x<matrix[y].length;x++){
+          if(matrix[y][x]){
+            ctx2.fillStyle = COLORS[type];
+            ctx2.fillRect(ox+x*cell, oy+y*cell, cell, cell);
+            ctx2.fillStyle = 'rgba(0,0,0,.15)';
+            ctx2.fillRect(ox+x*cell, oy+y*cell+cell-3, cell, 3);
+            ctx2.strokeStyle = 'rgba(255,255,255,.08)';
+            ctx2.strokeRect(ox+x*cell+.5, oy+y*cell+.5, cell-1, cell-1);
+          }
+        }
+      }
+    }
+
+    function drawNextHold(){
+      drawMini(nextCtx, state.nextQueue[0]);
+      drawMini(holdCtx, state.hold);
+    }
+
+    function drawAll(){
+      drawBoard();
+      drawNextHold();
+    }
+
+    function updateHUD(){
+      scoreEl.textContent = state.score;
+      linesEl.textContent = state.lines;
+      levelEl.textContent = state.level;
+    }
+
+    // ====== Game Loop ======
+    function update(time=0){
+      const delta = time - state.lastTime; state.lastTime = time;
+      if(!state.paused && !state.gameOver){
+        state.dropCounter += delta;
+        if(state.dropCounter >= state.dropInterval){
+          state.dropCounter = 0; softDrop();
+        }
+      }
+      drawAll();
+      requestAnimationFrame(update);
+    }
+
+    // ====== Input ======
+    const keys = {
+      ArrowLeft: ()=>move(-1),
+      ArrowRight: ()=>move(1),
+      ArrowDown: ()=>softDrop(),
+      Space: ()=>hardDrop(),
+      KeyZ: ()=>rotateCur(-1),
+      KeyX: ()=>rotateCur(1),
+      KeyC: ()=>hold(),
+      KeyP: togglePause,
+    };
+
+    document.addEventListener('keydown', (e)=>{
+      const code = e.code || e.key;
+      if(code==='Space') e.preventDefault();
+      const fn = keys[code]; if(fn){ fn(); }
+    });
+
+    function togglePause(){
+      if(state.gameOver) return;
+      state.paused = !state.paused;
+    }
+
+    // Buttons (mobile)
+    const on = (id, fn)=> document.getElementById(id).addEventListener('click', fn);
+    on('btnLeft', ()=>move(-1));
+    on('btnRight', ()=>move(1));
+    on('btnRotateL', ()=>rotateCur(-1));
+    on('btnRotateR', ()=>rotateCur(1));
+    on('btnSoft', ()=>softDrop());
+    on('btnHard', ()=>hardDrop());
+    on('btnHold', ()=>hold());
+    on('btnPause', ()=>togglePause());
+
+    document.getElementById('pauseBtn').addEventListener('click', togglePause);
+    document.getElementById('restartBtn').addEventListener('click', reset);
+
+    // ====== Start ======
+    reset();
+    requestAnimationFrame(update);
+  </script>
+</body>
+</html>
