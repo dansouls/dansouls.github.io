@@ -134,41 +134,62 @@
       I:'#6dd3ff', J:'#5da2ff', L:'#ffc65c', O:'#ffe66d', S:'#5cf29d', T:'#cfa9ff', Z:'#ff6b6b', GHOST:'rgba(255,255,255,.18)'
     };
 
-    // Ma trận các mảnh 4x4
+    // Ma trận các mảnh SRS (giữ kích thước vuông 3x3 hoặc 4x4 để xoay ổn định)
     const SHAPES = {
-      I:[[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
-      J:[[1,0,0],[1,1,1],[0,0,0]],
-      L:[[0,0,1],[1,1,1],[0,0,0]],
-      O:[[1,1],[1,1]],
-      S:[[0,1,1],[1,1,0],[0,0,0]],
-      T:[[0,1,0],[1,1,1],[0,0,0]],
-      Z:[[1,1,0],[0,1,1],[0,0,0]]
+      I:[
+        [0,0,0,0],
+        [1,1,1,1],
+        [0,0,0,0],
+        [0,0,0,0]
+      ],
+      J:[
+        [1,0,0],
+        [1,1,1],
+        [0,0,0]
+      ],
+      L:[
+        [0,0,1],
+        [1,1,1],
+        [0,0,0]
+      ],
+      O:[
+        [1,1],
+        [1,1]
+      ],
+      S:[
+        [0,1,1],
+        [1,1,0],
+        [0,0,0]
+      ],
+      T:[
+        [0,1,0],
+        [1,1,1],
+        [0,0,0]
+      ],
+      Z:[
+        [1,1,0],
+        [0,1,1],
+        [0,0,0]
+      ]
     };
 
     const PIECES = Object.keys(SHAPES);
 
-    function rotate(matrix, dir){
-      // quay 90 độ, dir=1 (cw), -1 (ccw)
-      const N = matrix.length;
+    // ====== Xoay vuông + wall kicks cơ bản (ổn định gần tường/sàn) ======
+    function rotateSquare(matrix, dir){
+      const N = matrix.length; // vuông N x N
       const res = Array.from({length:N},()=>Array(N).fill(0));
-      for(let y=0;y<N;y++) for(let x=0;x<N;x++){
-        const val = matrix[y][x];
-        if(!val) continue;
-        if(dir>0) res[x][N-1-y] = val; else res[N-1-x][y] = val;
+      for(let y=0;y<N;y++){
+        for(let x=0;x<N;x++){
+          const v = matrix[y][x];
+          if(dir>0){ // quay phải (CW)
+            res[x][N-1-y] = v;
+          } else {  // quay trái (CCW)
+            res[N-1-x][y] = v;
+          }
+        }
       }
-      return trimMatrix(res);
-    }
-
-    function trimMatrix(m){
-      // loại bỏ các hàng/cột rỗng để gọn
-      let top=0,bottom=m.length-1,left=0,right=m[0].length-1;
-      while(top<=bottom && m[top].every(v=>!v)) top++;
-      while(bottom>=top && m[bottom].every(v=>!v)) bottom--;
-      while(left<=right && m.every(row=>!row[left])) left++;
-      while(right>=left && m.every(row=>!row[right])) right--;
-      const res=[];
-      for(let y=top;y<=bottom;y++) res.push(m[y].slice(left,right+1));
-      return res.length?res:[[0]];
+      return res;
     }
 
     function createMatrix(w,h){
@@ -181,7 +202,7 @@
       if(bag.length===0){
         bag = [...PIECES];
         for(let i=bag.length-1;i>0;i--){
-          const j=Math.floor(Math.random()*(i+1));
+          const j=Math.random()* (i+1) | 0;
           [bag[i],bag[j]]=[bag[j],bag[i]];
         }
       }
@@ -191,18 +212,24 @@
     class Piece{
       constructor(type){
         this.type = type;
+        // Sao chép ma trận gốc (vuông 2/3/4)
         this.matrix = SHAPES[type].map(r=>r.slice());
-        this.matrix = trimMatrix(this.matrix);
         this.x = Math.floor((COLS - this.matrix[0].length)/2);
         this.y = -2; // spawn hơi trên
-        this.usedHold = false;
       }
       rotate(dir){
-        const rotated = rotate(this.matrix, dir);
-        const kickTests = [0, -1, 1, -2, 2];
-        for(const dx of kickTests){
-          if(!collides(rotated, this.x+dx, this.y)){
-            this.matrix = rotated; this.x += dx; return true;
+        const rotated = rotateSquare(this.matrix, dir);
+        // Wall kicks tổng quát: thử dịch chuyển nhỏ quanh vị trí hiện tại
+        const tests = [
+          {x:0,y:0},
+          {x:-1,y:0}, {x:1,y:0},
+          {x:0,y:-1}, {x:0,y:-2},
+          {x:-2,y:0}, {x:2,y:0},
+          {x:-1,y:-1}, {x:1,y:-1}
+        ];
+        for(const t of tests){
+          if(!collides(rotated, this.x + t.x, this.y + t.y)){
+            this.matrix = rotated; this.x += t.x; this.y += t.y; return true;
           }
         }
         return false;
@@ -274,14 +301,15 @@
 
     function clearLines(){
       let cleared = 0;
-      outer: for(let y=ROWS-1;y>=0;y--){
+      for(let y=ROWS-1;y>=0;y--){
         if(state.grid[y].every(cell=>cell)){
-          const row = state.grid.splice(y,1)[0];
+          state.grid.splice(y,1);
           state.grid.unshift(Array(COLS).fill(null));
-          cleared++; y++; // kiểm tra lại dòng vừa kéo xuống
+          cleared++; y++;
         }
       }
       if(cleared){
+        const SCORES = {1:100,2:300,3:500,4:800};
         state.score += (SCORES[cleared]||0) * state.level;
         updateLevel(cleared); updateHUD();
       }
@@ -290,7 +318,7 @@
     function spawnNext(){
       state.cur = new Piece(state.nextQueue.shift());
       state.nextQueue.push(nextType());
-      state.canHold = true; state.cur.usedHold = false;
+      state.canHold = true;
       if(collides(state.cur.matrix, state.cur.x, state.cur.y)){
         state.gameOver = true; state.paused = true;
       }
@@ -359,7 +387,6 @@
 
     function drawBoard(){
       ctx.clearRect(0,0,canvas.width,canvas.height);
-      // ô nền mờ
       for(let y=0;y<ROWS;y++){
         for(let x=0;x<COLS;x++){
           if(state.grid[y][x]) drawCell(x,y,COLORS[state.grid[y][x]]);
@@ -401,14 +428,16 @@
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center'; ctx.textBaseline='middle';
       ctx.font = '700 26px system-ui,Segoe UI,Roboto';
-      ctx.fillText(text, canvas.width/2, canvas.height/2);
+      for(const [i,line] of text.split('\n').entries()){
+        ctx.fillText(line, canvas.width/2, canvas.height/2 + i*32);
+      }
       ctx.restore();
     }
 
     function drawMini(ctx2, type){
       ctx2.clearRect(0,0,ctx2.canvas.width, ctx2.canvas.height);
       if(!type) return;
-      const matrix = trimMatrix(SHAPES[type]);
+      const matrix = SHAPES[type];
       const cell = 24; // kích thước ô nhỏ
       const w = matrix[0].length * cell, h = matrix.length * cell;
       const ox = Math.floor((ctx2.canvas.width - w)/2);
